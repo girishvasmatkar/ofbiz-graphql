@@ -14,9 +14,14 @@
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
- * under the License.
+ * under the License.aaaab	
  *******************************************************************************/
 package org.apache.ofbiz.graphql.schema;
+
+import static graphql.Scalars.GraphQLString;
+import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
+import static graphql.schema.GraphQLObjectType.newObject;
+import static graphql.schema.idl.TypeRuntimeWiring.newTypeWiring;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -24,8 +29,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.TreeSet;
+
 import org.apache.ofbiz.base.util.FileUtil;
+import org.apache.ofbiz.entity.Delegator;
+import org.apache.ofbiz.entity.GenericEntityException;
+import org.apache.ofbiz.entity.model.ModelEntity;
+import org.apache.ofbiz.entity.model.ModelFieldType;
+import org.apache.ofbiz.entity.model.ModelReader;
 import org.apache.ofbiz.graphql.fetcher.EntityDataFetcher;
+
+import com.ibm.icu.impl.ICUService.Key;
 
 import graphql.schema.FieldCoordinates;
 import graphql.schema.GraphQLArgument;
@@ -36,13 +51,18 @@ import graphql.schema.idl.RuntimeWiring;
 import graphql.schema.idl.SchemaGenerator;
 import graphql.schema.idl.SchemaParser;
 import graphql.schema.idl.TypeDefinitionRegistry;
-import static graphql.Scalars.GraphQLString;
-import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
-import static graphql.schema.GraphQLObjectType.newObject;
-import static graphql.schema.idl.TypeRuntimeWiring.newTypeWiring;
 
 public class GraphQLSchemaDefinition {
 	
+	private Delegator delegator;
+	
+	public GraphQLSchemaDefinition(Delegator delegator) {
+		this.delegator = delegator;
+	}
+	
+	public GraphQLSchemaDefinition() {
+		
+	}
 	
 	/**
 	 * Creates a new GraphQLSchema using SDL
@@ -79,6 +99,49 @@ public class GraphQLSchemaDefinition {
 		GraphQLSchema schema = GraphQLSchema.newSchema().query(queryType).codeRegistry(codeRegistry).build();
 		return schema;
 
+	}
+	
+	public GraphQLSchema newDynamicSchemaStatic() {
+		ModelReader reader = delegator.getModelReader();
+		final HashMap<String, String> test = new HashMap<String, String>();
+		TreeSet<String> entities = null;
+		try {
+			entities = new TreeSet<String>(reader.getEntityNames());
+		} catch (GenericEntityException e) {
+		}
+		
+		entities.forEach(entityName -> {
+			
+			try {
+				final ModelEntity entity = reader.getModelEntity(entityName);
+			
+			//ModelFieldTypeReader.getModelFieldTypeReader(helperName);
+			GraphQLObjectType.Builder entityBuilder = newObject().name(entityName);
+			entity.getFieldsIterator().forEachRemaining(field -> {
+				
+				String type = field.getType();
+				String name = field.getName();
+				ModelFieldType fieldType = delegator.getModelFieldTypeReader(entity).getModelFieldType(type);
+				test.put(type, fieldType.getJavaType());
+				if(entityName.equalsIgnoreCase("product")) {
+					//ModelFieldType fieldType = delegator.getModelFieldTypeReader(entity).getModelFieldType(type);
+					//System.out.println("Type - "+type+", Name "+name+" Java "+fieldType.getJavaType());
+					test.put(type, fieldType.getJavaType());
+				}
+				entityBuilder.field(newFieldDefinition().name(name).type(GraphQLString));
+			});
+			
+			
+			} catch (GenericEntityException e) {
+			}
+		});
+		
+		test.forEach((k,v) -> {
+			System.out.println("type - "+k+" value "+v);
+		});
+		
+		return null;
+		
 	}
 
 	private static Reader getSchemaReader(String resourceUrl) {

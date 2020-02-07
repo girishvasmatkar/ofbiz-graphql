@@ -19,14 +19,18 @@
 package org.apache.ofbiz.graphql;
 
 import java.io.IOException;
+
 import javax.servlet.ServletException;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
+
+import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.graphql.config.OFBizGraphQLObjectMapperConfigurer;
 import org.apache.ofbiz.graphql.schema.GraphQLSchemaDefinition;
+
 import graphql.ExecutionResultImpl;
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
@@ -45,8 +49,8 @@ public class GraphQLEndpointServletImpl extends SimpleGraphQLHttpServlet {
 	@Override
 	protected GraphQLConfiguration getConfiguration() {
 		mapper = GraphQLObjectMapper.newBuilder().withObjectMapperConfigurer(new OFBizGraphQLObjectMapperConfigurer()).build();
-		GraphQLSchemaDefinition schemaDef= new GraphQLSchemaDefinition();
-		configuration = GraphQLConfiguration.with(schemaDef.newDynamicSchema()).with(false).with(mapper).build();
+		GraphQLSchemaDefinition schemaDef= new GraphQLSchemaDefinition((Delegator)getServletContext().getAttribute("delegator"));
+		configuration = GraphQLConfiguration.with(schemaDef.newDynamicSchemaStatic()).with(false).with(mapper).build();
 		return configuration;
 	}
 	
